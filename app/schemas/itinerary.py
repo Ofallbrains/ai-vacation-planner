@@ -8,3 +8,8 @@ class DayCreate(BaseModel):
 class ItineraryCreate(BaseModel):
     trip_id: int
     days: List[DayCreate]
+
+# class AiItineraryResponse(BaseModel):
+#     trip_id: int
+#     itinerary: List[DayCreate]
+#     message: str

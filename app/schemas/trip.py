@@ -1,11 +1,17 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 class TripCreate(BaseModel):
-    destination: str
-    days: int
-    budget: float
-    trip_style: str
+    destination: str = Field(min_length=1)
+    days: int = Field(ge=1)
+    budget: float = Field(ge=0)
+    trip_style: str = Field(min_length=1)
+
+class TripUpdate(BaseModel):
+    destination: Optional[str] = Field(default=None, min_length=1)
+    days: Optional[int] = Field(default=None, ge=1)
+    budget: Optional[float] = Field(default=None, ge=0)
+    trip_style: Optional[str] = Field(default=None, min_length=1)
 
 class TripResponse(BaseModel):
     id: int
@@ -22,8 +28,3 @@ class TripRead(BaseModel):
     budget: float
     trip_style: str
     
-class TripUpdate(BaseModel):
-    destination: Optional[str] = None
-    days: Optional[int] = None
-    budget: Optional[float] = None
-    trip_style: Optional[str] = None

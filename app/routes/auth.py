@@ -19,7 +19,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # register
 
-@router.post("/register")
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(
     user_data: UserRegister,
     session: Session = Depends(get_session)

@@ -8,512 +8,177 @@ AI Vacation Planner is a backend REST API built with FastAPI and SQLModel that a
 - Register and authenticate accounts
 - Create and manage trips
 - Create and store travel itineraries
+- Generate AI-powered travel itineraries using Anthropic Claude
 - Protect user data using JWT authentication
 
-The project follows a clean backend structure using:
-
-- FastAPI
-- SQLModel
-- SQLite
-- Alembic
-- JWT Authentication
+Technologies:
+- FastAPI, SQLModel, SQLite, Alembic
+- Uvicorn for ASGI hosting
+- JWT authentication for route protection
+- Anthropic Claude for itinerary generation (LLM)
 
 ---
 
 ## Features
 
-### Authentication
-
-- Register user
-- Login user
-- JWT token authentication
-- Protected routes
-
-### Trips
-
-- Create trip
-- Get all trips
-- Get single trip
-- Update trip
-- Delete trip
-
-### Itineraries
-
-- Create itinerary
-- Store itinerary days and activities
-- Get itinerary by trip
-- User ownership protection
-
----
-
-## Tech Stack
-
-- Python
-- FastAPI
-- SQLModel
-- SQLite
-- Alembic
-- JWT Authentication
-- Uvicorn
+- JWT-based user registration and login
+- CRUD for Trips
+- Create, store, and retrieve Itineraries and ItineraryDays
+- AI-generated itineraries with structured JSON output
+- Ownership checks: users can only access their own trips/itineraries
 
 ---
 
 ## Project Structure
 
-```bash
 app/
-│
-├── dependencies/
-│   ├── auth.py
-│   └── db.py
-│
-├── models/
-│   ├── user.py
-│   ├── trip.py
-│   ├── itinerary.py
-│   └── itinerary_day.py
-│
-├── routes/
-│   ├── auth.py
-│   ├── user.py
-│   ├── trips.py
-│   └── itinerary.py
-│
-├── schemas/
-│   ├── auth.py
-│   ├── trip.py
-│   └── itinerary.py
-│
-├── services/
-│   ├── auth_service.py
-│   ├── trip_service.py
-│   └── itinerary_service.py
-│
-├── core/
-│   └── security.py
-│
-└── main.py
+- dependencies/: FastAPI dependency providers (DB session, auth)
+- models/: SQLModel table definitions
+- routes/: HTTP endpoints
+- schemas/: Pydantic request/response models
+- services/: Business logic and adapters (including AI)
+- core/: security helpers
+- main.py
 
-alembic/
-requirements.txt
-README.md
-```
+alembic/: DB migrations
 
 ---
 
-## Architecture Explanation
+**Architecture**
 
-The project uses a layered backend architecture.
+- **Routes Layer**: FastAPI routers receive HTTP requests, perform request validation via schemas, and call service-layer functions. Routes are thin and authorized via dependency-injection (JWT).
+- **Service Layer**: Implements business rules, DB transactions, ownership checks, and orchestration (e.g., create trip → optionally call AI itinerary generator). Examples: `trip_service`, `itinerary_service`, `auth_service`, `ai_itinerary_service`.
+- **Data Layer / Models**: SQLModel models define tables and relationships (User, Trip, Itinerary, ItineraryDay). The DB is accessed via session objects provided by `dependencies/db.py`.
+- **Schemas Layer**: Pydantic models for input validation and output formatting. Schemas are intentionally strict for the AI-produced data to allow robust validation before persisting.
+- **Core & Utilities**: `core/security.py` for password hashing & JWT creation; common helpers for retries, caching, and input sanitization.
+- **LLM Adapter / AI Service**: A dedicated adapter layer (`services/ai_itinerary_service.py`) encapsulates all LLM interaction, retry/backoff logic, prompt templates, output validation, rate limiting, and optional caching. The rest of the app calls this adapter via a simple function that returns validated itinerary data or a clear error.
 
-### Routes Layer
-
-Handles API endpoints and HTTP requests.
-
-Example:
-
-```python
-@router.post("/")
-def create_new_trip():
-		...
-```
-
-Responsibilities:
-
-- Receive requests
-- Validate request data
-- Call services
-- Return responses
+Data flow (high-level):
+1. Client POSTs trip creation or "generate itinerary" action.
+2. Route validates request, confirms user's ownership.
+3. Service persists trip (if new) and/or calls AI adapter.
+4. AI adapter builds prompt, calls Anthropic, validates structured JSON response, returns it.
+5. Service saves itinerary and itinerary_day rows and returns API response.
 
 ---
 
-### Service Layer
+**LLM Integration (Anthropic Claude) — Design & Best Practices**
 
-Contains business logic.
+- **Adapter responsibility**
+	- Centralize all LLM calls in `services/ai_itinerary_service.py`.
+	- Handle prompt composition, model selection, rate limits, backoff, retries, response parsing, schema validation, and caching.
+	- Return clear typed structures (e.g., list of day objects) or raise explicit exceptions the service layer can handle.
 
-Example:
+- **Environment configuration**
+	- `ANTHROPIC_API_KEY` — required API key.
+	- `ANTHROPIC_MODEL` — default model overrideable per request.
+	- `ANTHROPIC_TIMEOUT` — seconds for HTTP calls.
+	- `AI_MAX_TOKENS` / `AI_TEMPERATURE` — tunable inference parameters.
 
-```python
-def create_trip(session, trip_data, user_id):
-		...
-```
+- **Prompting & Template**
+	- Use a deterministic prompt template that instructs the model to output only valid JSON following a strict schema.
+	- Include explicit constraints: number of days, budget, trip style (budget/standard/luxury), user preferences, travel pace.
+	- Example prompt snippet:
+		```
+		Generate a JSON itinerary for destination "{destination}" for {days} days.
+		Output must be a single JSON object matching this schema:
+		{
+			"trip_id": <int|null>,
+			"destination": <string>,
+			"days": [
+				{ "day": <int>, "activities": [ { "time": <string|null>, "title": <string>, "description": <string>, "cost_estimate": <number|null> } ] }
+			],
+			"notes": <string|null>
+		}
+		Respond only with JSON.
+		```
 
-Responsibilities:
+- **Output Schema & Validation**
+	- Define a strict Pydantic schema for AI output in `schemas/itinerary.py`.
+	- Always validate model output before persisting. If validation fails, attempt a structured fallback:
+		- Try a single deterministic parse pass.
+		- If parsing fails, attempt a small automatic cleanup (strip code fences, trailing text).
+		- If still invalid, do not save; return a descriptive error to client and log raw model output for debugging.
 
-- Database operations
-- Authorization checks
-- Business rules
-- CRUD logic
+- **Retries, Backoff, and Rate Limits**
+	- Use exponential backoff with jitter for transient HTTP/429 errors.
+	- Cap retries (e.g., 3 attempts).
+	- Implement concurrency and rate limiting client-side to avoid hitting provider limits.
 
----
+- **Caching & Cost Control**
+	- Cache common prompts / trip configurations to avoid repeated model calls for identical requests.
+	- Consider memoization keyed by (destination, days, trip_style, budget, preferences).
+	- Add a `dry_run` or `preview_only` flag to generate itineraries without saving or incurring repeated bets.
 
-### Models Layer
+- **Safety & Privacy**
+	- Do not send user PII (email, exact user id) to LLM provider. Only send trip-relevant, non-identifying fields.
+	- Sanitize user-supplied free-text preferences to remove secrets before including them in prompts.
+	- Log only metadata and anonymized request info. Never log full prompts containing sensitive user input.
 
-Defines database tables using SQLModel.
+- **Determinism & Reproducibility**
+	- For reproducible output (e.g., when users wish to regenerate the same itinerary), set `temperature` low (0–0.3) and store the prompt + model settings used.
+	- Save the "model run metadata" with the itinerary: model name, temperature, timestamp, prompt hash.
 
-Example:
-
-```python
-class Trip(SQLModel, table=True):
-		...
-```
-
-Responsibilities:
-
-- Database schema
-- Relationships
-- Table structure
-
----
-
-### Schemas Layer
-
-Defines request and response validation using Pydantic.
-
-Example:
-
-```python
-class TripCreate(BaseModel):
-		...
-```
-
-Responsibilities:
-
-- Input validation
-- Response formatting
-- API contracts
+- **Error handling & UX**
+	- If AI generation fails, the API should:
+		- Return a clear 502/503 response with an explanation like "AI generation failed. Please try again."
+		- Optionally fall back to a simple rule-based generator for minimal output.
+	- Expose generation status (pending/complete/failed) for long-running operations; use background tasks for large models.
 
 ---
 
 ## Database Design
 
-### User
-
-Stores user authentication information.
-
-Fields:
-
-- id
-- email
-- hashed_password
-
----
-
-### Trip
-
-Stores trip information.
-
-Fields:
-
-- id
-- destination
-- days
-- budget
-- trip_style
-- user_id
-
-Relationship:
-
-- A trip belongs to one user.
-
----
-
-### Itinerary
-
-Stores itinerary information linked to a trip.
-
-Fields:
-
-- id
-- trip_id
-
-Relationship:
-
-- An itinerary belongs to one trip.
-
----
-
-### ItineraryDay
-
-Stores activities for each itinerary day.
-
-Fields:
-
-- id
-- day
-- activities
-- itinerary_id
-
-Relationship:
-
-- Multiple itinerary days belong to one itinerary.
+- **User**: id, email, hashed_password
+- **Trip**: id, destination, days, budget, trip_style, user_id
+- **Itinerary**: id, trip_id, generated_by_ai (bool), model_metadata (json optional)
+- **ItineraryDay**: id, day, activities (JSON), itinerary_id
 
 ---
 
 ## Setup Instructions
 
-### 1. Clone Repository
-
-```bash
-git clone <your-repository-url>
-cd ai-vacation-planner
-```
-
----
-
-### 2. Create Virtual Environment
-
-#### Windows
-
-```bash
-py -m venv venv
-.\venv\Scripts\Activate.ps1
-```
-
----
-
-### 3. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-### 4. Run Database Migrations
-
-```bash
-alembic upgrade head
-```
-
----
-
-### 5. Start Server
-
-```bash
-uvicorn app.main:app --reload
-```
-
-Server URL:
-
-```bash
-http://127.0.0.1:8000
-```
+1. Create and activate virtual environment (Windows example):
+	 ```
+	 py -m venv venv
+	 .\venv\Scripts\Activate.ps1
+	 ```
+2. Install requirements:
+	 ```
+	 pip install -r requirements.txt
+	 ```
+3. Configure environment variables:
+	 - `DATABASE_URL` (e.g., sqlite:///./dev.db)
+	 - `SECRET_KEY` (JWT secret)
+	 - `ANTHROPIC_API_KEY`
+	 - Optional: `ANTHROPIC_MODEL`, `ANTHROPIC_TIMEOUT`, `AI_TEMPERATURE`
+4. Run migrations:
+	 ```
+	 alembic upgrade head
+	 ```
+5. Start server:
+	 ```
+	 uvicorn app.main:app --reload
+	 ```
 
 ---
 
 ## API Documentation
 
-FastAPI automatically generates Swagger documentation.
-
-### Swagger UI
-
-Open:
-
-```bash
+Swagger UI:
+```
 http://127.0.0.1:8000/docs
 ```
 
 ---
 
-## API Endpoints
+## Example Endpoints
 
-## Authentication
-
-### Register User
-
-```http
-POST /auth/register
-```
-
-Request:
-
-```json
-{
-	"email": "user1@test.com",
-	"password": "12345678"
-}
-```
-
----
-
-### Login User
-
-```http
-POST /auth/login
-```
-
-Request:
-
-```json
-{
-	"email": "user1@test.com",
-	"password": "12345678"
-}
-```
-
----
-
-### Get Current User
-
-```http
-GET /users/me
-```
-
-Protected Route:
-
-```text
-Authorization: Bearer <token>
-```
-
----
-
-## Trips
-
-### Create Trip
-
-```http
-POST /trips
-```
-
-Request:
-
-```json
-{
-	"destination": "Paris",
-	"days": 5,
-	"budget": 1500,
-	"trip_style": "budget"
-}
-```
-
-Response:
-
-```json
-{
-	"id": 1,
-	"destination": "Paris",
-	"days": 5,
-	"budget": 1500,
-	"trip_style": "budget",
-	"message": "Trip created successfully"
-}
-```
-
----
-
-### Get All Trips
-
-```http
-GET /trips
-```
-
----
-
-### Get Single Trip
-
-```http
-GET /trips/{id}
-```
-
----
-
-### Update Trip
-
-```http
-PUT /trips/{id}
-```
-
----
-
-### Delete Trip
-
-```http
-DELETE /trips/{id}
-```
-
----
-
-## Itineraries
-
-### Create Itinerary
-
-```http
-POST /itineraries
-```
-
-Request:
-
-```json
-{
-	"trip_id": 1,
-	"days": [
-		{
-			"day": 1,
-			"activities": ["Eiffel Tower", "Seine River Walk"]
-		},
-		{
-			"day": 2,
-			"activities": ["Louvre Museum", "Montmartre"]
-		}
-	]
-}
-```
-
-Response:
-
-```json
-{
-	"trip_id": 1,
-	"itinerary": [
-		{
-			"day": 1,
-			"activities": ["Eiffel Tower", "Seine River Walk"]
-		},
-		{
-			"day": 2,
-			"activities": ["Louvre Museum", "Montmartre"]
-		}
-	],
-	"message": "Itinerary created successfully"
-}
-```
-
----
-
-### Get Itinerary By Trip
-
-```http
-GET /itineraries/{trip_id}
-```
-
----
-
-## Authentication Flow
-
-1. Register user
-2. Login user
-3. Copy JWT token
-4. Click "Authorize" in Swagger
-5. Enter:
-
-```text
-your_token_here
-```
-
-6. Access protected routes
-
----
-
-## Security
-
-The application uses JWT authentication for route protection.
-
-Protected resources:
-
-- User profile
-- Trips
-- Itineraries
-
-Users can only access their own trips and itineraries.
+- `POST /auth/register` — Register
+- `POST /auth/login` — Login
+- `GET /users/me` — Protected
+- `POST /trips` — Create trip
+- `POST /itineraries/generate` — Generate itinerary using AI (protected)
+- `GET /itineraries/{trip_id}` — Retrieve itinerary
 
 ---
