@@ -104,13 +104,11 @@ def generate_itinerary_for_trip(
     session.add(itinerary)
     session.flush()
 
-    for item in ai_result["days"]:
+    for item in ai_result.days:
 
         itinerary_day = ItineraryDay(
-            day=item["day"],
-            activities=json.dumps(
-                item["activities"]
-            ),
+            day=item.day,
+            activities=json.dumps(item.activities),
             itinerary_id=itinerary.id
         )
 
@@ -119,7 +117,9 @@ def generate_itinerary_for_trip(
     session.commit()
 
     return {
-        "trip_id": trip.id,
-        "itinerary": ai_result["days"],
-        "message": "AI itinerary generated successfully"
-    }
+
+    "trip_id": trip.id,
+    "itinerary": ai_result.model_dump()["days"],
+    "message":"AI itinerary generated successfully"
+
+}
