@@ -15,11 +15,12 @@ WEATHER = {
 
 
 def get_weather(destination: str):
-    return WEATHER.get(
+    weather = WEATHER.get(
         destination,
         {
             "temperature": 22,
             "condition": "Unknown"
         }
-
     )
+    
+    return weather.copy()

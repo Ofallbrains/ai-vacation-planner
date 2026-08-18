@@ -4,6 +4,6 @@ from dataclasses import dataclass
 class AIState:
     destination: str
     days: int
-    budget:float
+    budget: float
     travel_style: str
     weather: dict

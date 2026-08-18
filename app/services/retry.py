@@ -5,6 +5,8 @@ def retry(function, retries=3, delay=1):
     """
     Retry a function if it raises an exception.
     """
+    if retries < 1:
+        raise ValueError("retries must be at least 1")
 
     last_exception = None
 
@@ -22,5 +24,8 @@ def retry(function, retries=3, delay=1):
             )
 
             time.sleep(delay)
-
-    raise last_exception
+            
+            if last_exception is not None:
+                raise last_exception
+            
+            raise RuntimeError("Retry failed without an exception")
