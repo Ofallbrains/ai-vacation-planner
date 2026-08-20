@@ -136,6 +136,102 @@ Data flow (high-level):
 
 ---
 
+
+## Designing AI Systems
+
+The Vacation Planner was designed as an AI-powered system where the LLM is integrated with application logic, external tools, structured outputs, and a retrieval system.
+
+### AI System Flow
+
+The AI itinerary generation process combines trip information, weather information, and retrieved travel knowledge before sending the context to Claude.
+
+```text
+Trip Information
+       |
+       v
+AI Itinerary Service
+       |
+       +------> Weather Tool
+       |
+       +------> RAG Retrieval
+                    |
+                    v
+                 ChromaDB
+                    |
+                    v
+             Retrieved Context
+                    |
+                    v
+              Prompt Builder
+                    |
+                    v
+             Anthropic Claude
+                    |
+                    v
+            Structured JSON
+                    |
+                    v
+          Pydantic Validation
+                    |
+                    v
+               Itinerary
+
+---
+
+## RAG & Knowledge Systems
+
+The Vacation Planner uses Retrieval-Augmented Generation (RAG) to give the AI access to a travel knowledge base.
+
+Instead of relying only on the LLM's general knowledge, the system retrieves relevant travel information from stored documents and provides that information as context when generating an itinerary.
+
+### Travel Knowledge Base
+
+The system contains travel-related documents for different destinations.
+
+The knowledge base currently includes:
+
+- Travel guides
+- Major attractions
+- Neighborhood information
+- Food recommendations
+- Transportation information
+- Local travel tips
+- Less touristy areas and hidden spots
+
+Knowledge documents are stored in:
+
+```text
+knowledge/
+├── paris_guide.txt
+├── london_guide.txt
+└── dubai_guide.txt
+
+Travel Documents
+       |
+       v
+Document Chunking
+       |
+       v
+Embeddings
+       |
+       v
+ChromaDB
+       |
+       v
+Semantic Search
+       |
+       v
+Relevant Travel Context
+       |
+       v
+AI Prompt
+       |
+       v
+Anthropic Claude
+       |
+       v
+Generated Itinerary
+
 ## Setup Instructions
 
 1. Create and activate virtual environment (Windows example):

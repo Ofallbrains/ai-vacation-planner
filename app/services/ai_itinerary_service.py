@@ -1,77 +1,77 @@
-import json
 from anthropic import Anthropic
 
 from app.config import settings
-
-client = Anthropic(
-    api_key=settings.anthropic_api_key
+from app.schemas.ai_response import AIItineraryResponse
+from app.prompts.itinerary_prompt import (
+    SYSTEM_PROMPT,
+    build_itinerary_prompt,
 )
+from app.tools.weather_tool import get_weather
+from app.services.state import AIState
+from app.services.retry import retry
+from app.rag.rag_service import retrieve_context
+
+
+client = Anthropic(api_key=settings.anthropic_api_key)
 
 
 def generate_itinerary(
     destination: str,
     days: int,
     budget: float,
-    travel_style: str
-):
+    travel_style: str,
+) -> AIItineraryResponse:
 
-    prompt = f"""
-You are a professional vacation planning assistant.
-
-Create a detailed itinerary based on the following trip:
-
-Destination: {destination}
-Number of Days: {days}
-Budget: {budget} USD
-Travel Style: {travel_style}
-
-Rules:
-
-1. Only include attractions and activities that exist in {destination}.
-2. Keep recommendations within the stated budget.
-3. Create exactly {days} days.
-4. Each day should contain 3-5 activities.
-5. Activities should follow a realistic schedule.
-6. Avoid duplicate attractions.
-7. Include a mix of sightseeing, food, culture and relaxation when appropriate.
-8. Return ONLY JSON.
-9. Do not include markdown.
-10. Do not explain your answer
-
-Return:
-
-{{
-  "days":[
-    {{
-      "day":1,
-      "activities":[
-        "activity",
-        "activity"
-      ]
-    }}
-  ]
-}}
-"""
-
-    response = client.messages.create(
-        model="claude-haiku-4-5",
-        max_tokens=2000,
-        temperature=0.7,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
+    weather = get_weather(destination)
     
+    query = f"""
+    Create a travel itinerary for {destination}.
+    The trip is {days} days long.
+    The traveler's budget is {budget}.
+    The traveler's style is {travel_style}.
 
-    result = response.content[0].text.strip()
+    Find relevant attractions, neighborhoods,
+    local tips, food recommendations, and
+    useful travel information.
+    """
 
-    try:
-        
-        return json.loads(result)
-    except Exception:
-        raise Exception(
-            f"Claude returned invalid JSON:\n{result}"
+    context = retrieve_context(
+        query=query,
+        n_results=3,
+    )
+
+    state = AIState(
+        destination=destination,
+        days=days,
+        budget=budget,
+        travel_style=travel_style,
+        weather=weather,
+        context=context,
+    )
+
+    prompt = build_itinerary_prompt(
+        destination=state.destination,
+        days=state.days,
+        budget=state.budget,
+        travel_style=state.travel_style,
+        weather=state.weather,
+        context=state.context,
+    )
+
+    response = retry(
+        lambda: client.messages.parse(
+            model=settings.anthropic_model,
+            system=SYSTEM_PROMPT,
+            max_tokens=2000,
+            temperature=0.7,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            output_format=AIItineraryResponse,
         )
+    )
+
+    return response.parsed_output
