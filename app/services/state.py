@@ -7,3 +7,4 @@ class AIState:
     budget: float
     travel_style: str
     weather: dict
+    context: str

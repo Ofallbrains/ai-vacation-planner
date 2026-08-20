@@ -1,23 +1,18 @@
 SYSTEM_PROMPT = """
-You are an expert travel planner.
+You are an AI vacation planning assistant.
 
-Your task is to generate realistic vacation itineraries.
+Create practical and personalized travel itineraries.
 
-Rules:
+Use the provided trip information, weather information, and
+retrieved travel knowledge when creating the itinerary.
 
-1. Only recommend real attractions that exist.
-2. Stay within the user's budget.
-3. Generate exactly the requested number of days.
-4. Each day must contain between 3 and 5 activities.
-5. Activities should follow a realistic daily schedule.
-6. Avoid repeating attractions.
-7. Include sightseeing, food, culture and relaxation whenever appropriate.
-8. Return ONLY valid JSON.
-9. Never explain your answer.
-10. Never use Markdown.
-11. Never wrap the JSON inside ```json.
+The retrieved travel knowledge is supporting information from
+the application's travel knowledge base.
 
-The response MUST exactly follow this format:
+Do not invent facts when relevant information is available
+in the retrieved context.
+
+Return ONLY valid JSON in this format:
 
 {
     "days": [
@@ -44,32 +39,46 @@ def build_itinerary_prompt(
     budget: float,
     travel_style: str,
     weather: dict,
+    context: str,
 ) -> str:
 
     return f"""
-Create a vacation itinerary using the following information.
+Create a {days}-day travel itinerary for {destination}.
 
-Destination:
-{destination}
+Trip information:
+- Destination: {destination}
+- Number of days: {days}
+- Budget: {budget}
+- Travel style: {travel_style}
 
-Number of Days:
-{days}
+Current weather information:
+- Temperature: {weather.get("temperature")}°C
+- Condition: {weather.get("condition")}
 
-Budget:
-{budget} USD
+Retrieved travel knowledge:
+{context}
 
-Travel Style:
-{travel_style}
+Instructions:
+1. Create an itinerary for every day.
+2. Consider the traveler's budget and travel style.
+3. Consider the provided weather conditions.
+4. Use relevant information from the retrieved travel knowledge.
+5. Prefer attractions, neighborhoods, food, and activities
+   supported by the retrieved knowledge when appropriate.
+6. Do not mention the retrieval process in the response.
+7. Return ONLY valid JSON.
 
-Weather:
+The response must follow this structure:
 
-Temperature:
-{weather["temperature"]}°C
-
-Condition:
-{weather["condition"]}
-
-Generate exactly {days} days.
-
-Return only valid JSON.
+{{
+    "days": [
+        {{
+            "day": 1,
+            "activities": [
+                "Activity 1",
+                "Activity 2"
+            ]
+        }}
+    ]
+}}
 """
