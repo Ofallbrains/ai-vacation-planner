@@ -232,6 +232,43 @@ Anthropic Claude
        v
 Generated Itinerary
 
+
+## Frameworks & Orchestration
+
+The Vacation Planner was upgraded in Phase 5 from a direct LLM + RAG flow into a tool-using AI agent architecture using LangChain and LangGraph.
+
+The AI agent can decide which tools are useful for a travel request, execute those tools, receive their results, and use the collected information to generate a structured itinerary.
+
+### Phase 5 Architecture
+
+```text
+User Request
+     |
+     v
+  LangGraph
+     |
+     v
+   Agent
+     |
+     |-----> Weather Tool
+     |
+     |-----> Travel Knowledge Tool
+     |
+     v
+  Tool Results
+     |
+     v
+   Agent
+     |
+     v
+Structured AI Response
+     |
+     v
+Itinerary Service
+     |
+     v
+Database
+
 ## Setup Instructions
 
 1. Create and activate virtual environment (Windows example):
