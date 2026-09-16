@@ -7,7 +7,6 @@ from app.rag.vector_store import add_documents
 
 KNOWLEDGE_DIR = Path("knowledge")
 
-
 def ingest_knowledge_base():
     documents = []
     metadatas = []
