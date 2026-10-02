@@ -136,6 +136,212 @@ Data flow (high-level):
 
 ---
 
+
+## Designing AI Systems
+
+The Vacation Planner was designed as an AI-powered system where the LLM is integrated with application logic, external tools, structured outputs, and a retrieval system.
+
+### AI System Flow
+
+The AI itinerary generation process combines trip information, weather information, and retrieved travel knowledge before sending the context to Claude.
+
+```text
+Trip Information
+       |
+       v
+AI Itinerary Service
+       |
+       +------> Weather Tool
+       |
+       +------> RAG Retrieval
+                    |
+                    v
+                 ChromaDB
+                    |
+                    v
+             Retrieved Context
+                    |
+                    v
+              Prompt Builder
+                    |
+                    v
+             Anthropic Claude
+                    |
+                    v
+            Structured JSON
+                    |
+                    v
+          Pydantic Validation
+                    |
+                    v
+               Itinerary
+
+---
+
+## RAG & Knowledge Systems
+
+The Vacation Planner uses Retrieval-Augmented Generation (RAG) to give the AI access to a travel knowledge base.
+
+Instead of relying only on the LLM's general knowledge, the system retrieves relevant travel information from stored documents and provides that information as context when generating an itinerary.
+
+### Travel Knowledge Base
+
+The system contains travel-related documents for different destinations.
+
+The knowledge base currently includes:
+
+- Travel guides
+- Major attractions
+- Neighborhood information
+- Food recommendations
+- Transportation information
+- Local travel tips
+- Less touristy areas and hidden spots
+
+Knowledge documents are stored in:
+
+```text
+knowledge/
+├── paris_guide.txt
+├── london_guide.txt
+└── dubai_guide.txt
+
+Travel Documents
+       |
+       v
+Document Chunking
+       |
+       v
+Embeddings
+       |
+       v
+ChromaDB
+       |
+       v
+Semantic Search
+       |
+       v
+Relevant Travel Context
+       |
+       v
+AI Prompt
+       |
+       v
+Anthropic Claude
+       |
+       v
+Generated Itinerary
+
+
+## Frameworks & Orchestration
+
+The Vacation Planner was upgraded in Phase 5 from a direct LLM + RAG flow into a tool-using AI agent architecture using LangChain and LangGraph.
+
+The AI agent can decide which tools are useful for a travel request, execute those tools, receive their results, and use the collected information to generate a structured itinerary.
+
+### Phase 5 Architecture
+
+```text
+User Request
+     |
+     v
+  LangGraph
+     |
+     v
+   Agent
+     |
+     |-----> Weather Tool
+     |
+     |-----> Travel Knowledge Tool
+     |
+     v
+  Tool Results
+     |
+     v
+   Agent
+     |
+     v
+Structured AI Response
+     |
+     v
+Itinerary Service
+     |
+     v
+Database
+
+
+---
+
+# 4. Add the Part 6 Voice section
+
+Since we just finished this, I would definitely document it.
+
+Add:
+
+```markdown
+## Multimodal Voice Features
+
+The Vacation Planner was extended with voice capabilities.
+
+### Speech-to-Text
+
+Users can provide an audio file containing their travel request.
+
+```text
+Audio
+  |
+  v
+Faster-Whisper
+  |
+  v
+Text Transcript
+  |
+  v
+LangGraph Agent
+  |
+  v
+AI Itinerary
+
+
+---
+
+# 5. Add MCP as an **independent** section
+
+This is important because you specifically said **don't connect MCP to LangGraph**.
+
+Your README should make that distinction clear:
+
+```markdown
+## MCP — Model Context Protocol
+
+The Vacation Planner also includes an independent MCP integration for
+connecting the application to external travel-related tools.
+
+MCP is implemented as a separate client/server layer and does not replace
+the existing LangGraph tool system.
+
+### MCP Architecture
+
+```text
+                 Vacation Planner
+                       |
+                       v
+                   MCP Client
+                       |
+                       v
+                MCP Travel Server
+                  /          \
+                 /            \
+                v              v
+        Weather Tool       Maps Tool
+             |                 |
+             v                 v
+        Open-Meteo       OpenStreetMap/
+                          OSRM Services
+
+
+
+
 ## Setup Instructions
 
 1. Create and activate virtual environment (Windows example):
@@ -182,3 +388,83 @@ http://127.0.0.1:8000/docs
 - `GET /itineraries/{trip_id}` — Retrieve itinerary
 
 ---
+
+## Project Structure
+
+```text
+app/
+├── agents/
+│   └── travel_agent.py
+│
+├── core/
+│   └── security.py
+│
+├── dependencies/
+│   ├── auth.py
+│   └── db.py
+│
+├── graph/
+│   └── travel_graph.py
+│
+├── mcp/
+│   ├── travel_server.py
+│   └── client.py
+│
+├── models/
+│   ├── user.py
+│   ├── trip.py
+│   ├── itinerary.py
+│   └── itinerary_day.py
+│
+├── rag/
+│   └── rag_service.py
+│
+├── routes/
+│   ├── auth.py
+│   ├── user.py
+│   ├── trips.py
+│   ├── itinerary.py
+│   └── voice.py
+│
+├── schemas/
+│   ├── ai_response.py
+│   ├── itinerary.py
+│   ├── trip.py
+│   ├── voice.py
+│   └── tts.py
+│   └── auth.py
+│
+├── services/
+│   ├── ai_itinerary_service.py
+│   ├── itinerary_service.py
+│   ├── speech_service.py
+│   ├── tts_service.py
+│   └── llm.py
+│
+├── tools/
+│   ├── weather_tool.py
+│   ├── rag_tool.py
+│   └── mcp_tools.py
+│
+└── main.py
+
+knowledge/
+├── paris_guide.txt
+├── london_guide.txt
+└── dubai_guide.txt
+
+test/
+├── test_agent.py
+├── test_chunker.py
+├── test_embeddings.py
+├── test_graph.py
+├── test_mcp_client.py
+├── test_mcp_maps.py
+├── test_mcp_tools.py
+├── test_rag.py
+├── test_vector_store.py
+└── test_weather_tool.py
+
+alembic/
+requirements.txt
+README.md
