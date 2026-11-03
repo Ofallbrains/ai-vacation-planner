@@ -1,4 +1,5 @@
 from app.agents.travel_agent import run_agent
+from app.evaluation.evaluator import evaluate_itinerary
 from app.schemas.ai_response import AIItineraryResponse
 
 
@@ -30,4 +31,17 @@ def generate_itinerary(
     Return an itinerary for exactly {days} days.
     """
 
-    return run_agent(user_request)
+    response = run_agent(user_request)
+    
+    evaluation = evaluate_itinerary(
+      response = response,
+      expected_days=days,
+      destination=destination,
+    )
+    
+    if not evaluation.accepted:
+      raise ValueError(
+        f"Itinerary evaluation failed: {evaluation.issues}"
+      )
+      
+    return response
