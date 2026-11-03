@@ -1,6 +1,8 @@
 from app.agents.travel_agent import run_agent
 from app.evaluation.evaluator import evaluate_itinerary
 from app.schemas.ai_response import AIItineraryResponse
+from app.guardrails.input_guard import validate_trip_input
+from app.guardrails.input_guard import validate_trip_input
 
 
 def generate_itinerary(
@@ -9,6 +11,14 @@ def generate_itinerary(
     budget: float,
     travel_style: str,
 ) -> AIItineraryResponse:
+  
+  
+    validate_trip_input(
+      destination=destination,
+      days=days,
+      budget=budget,
+      travel_style=travel_style,
+  )
     
     user_request = f"""
     Create a {days}-day travel itinerary for {destination}.
@@ -33,6 +43,8 @@ def generate_itinerary(
 
     response = run_agent(user_request)
     
+    itinerary = validate_ai_output(response)
+    
     evaluation = evaluate_itinerary(
       response = response,
       expected_days=days,
@@ -44,4 +56,4 @@ def generate_itinerary(
         f"Itinerary evaluation failed: {evaluation.issues}"
       )
       
-    return response
+    return itinerary
