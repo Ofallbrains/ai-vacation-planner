@@ -5,9 +5,11 @@ from app.routes.auth import router as auth_router
 from app.routes.user import router as user_router
 from app.routes.trips import router as trips_router
 from app.routes.itinerary import router as itinerary_router
+from app.routes.voice import router as voice_router
+from app.observability.logging_config import setup_logging
 
 
-import app.models
+setup_logging()
 
 app = FastAPI(title="AI Vacation Planner")
 
@@ -23,3 +25,4 @@ app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(trips_router)
 app.include_router(itinerary_router)
+app.include_router(voice_router)

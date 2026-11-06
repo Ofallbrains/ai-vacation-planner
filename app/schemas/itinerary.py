@@ -1,15 +1,17 @@
 from pydantic import BaseModel
-from typing import List
+
 
 class DayCreate(BaseModel):
     day: int
-    activities: List[str]
-    
+    activities: list[str]
+
+
 class ItineraryCreate(BaseModel):
     trip_id: int
-    days: List[DayCreate]
+    days: list[DayCreate]
 
-# class AiItineraryResponse(BaseModel):
-#     trip_id: int
-#     itinerary: List[DayCreate]
-#     message: str
+
+class ItineraryResponse(BaseModel):
+    trip_id: int
+    itinerary: list[DayCreate]
+    message: str

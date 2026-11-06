@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from app.models.trip import Trip
 from app.models.itinerary import Itinerary
 from app.models.itinerary_day import ItineraryDay
-from app.schemas.itinerary import ItineraryCreate
+from app.schemas.itinerary import DayCreate, ItineraryCreate, ItineraryResponse
 from app.services.ai_itinerary_service import generate_itinerary
 
 def create_itinerary(session: Session, data: ItineraryCreate, user_id: int):
@@ -31,12 +31,12 @@ def create_itinerary(session: Session, data: ItineraryCreate, user_id: int):
         session.add(day)
 
     session.commit()
-
-    return {
-        "trip_id": data.trip_id,
-        "itinerary": data.days,
-        "message": "Itinerary created successfully"
-    }
+    
+    return ItineraryResponse(
+        trip_id=data.trip_id,
+        itinerary=data.days,
+        message="Itinerary created successfully",
+    )
 
 def get_itinerary_by_trip(session: Session, trip_id: int, user_id: int):
     
@@ -59,67 +59,70 @@ def get_itinerary_by_trip(session: Session, trip_id: int, user_id: int):
         ItineraryDay.itinerary_id == itinerary.id
     ).all()
 
-    return {
-        "trip_id": trip_id,
-        "itinerary": [
-            {
-                "day": d.day,
-                "activities": json.loads(d.activities)
-            }
+    return ItineraryResponse(
+        trip_id=trip_id,
+        itinerary=[
+            DayCreate(
+                day=d.day,
+                activities=json.loads(d.activities),
+        )
             for d in days
-        ]
-    }
+            ],
+        message="Itinerary retrieved successfully",
+    )
     
 def generate_itinerary_for_trip(
     session: Session,
     trip_id: int,
-    user_id: int
+    user_id: int,
 ):
-
     trip = session.get(Trip, trip_id)
 
     if not trip:
         raise HTTPException(
             status_code=404,
-            detail="Trip not found"
+            detail="Trip not found",
         )
 
     if trip.user_id != user_id:
         raise HTTPException(
             status_code=403,
-            detail="Not allowed"
+            detail="Not allowed",
         )
 
     ai_result = generate_itinerary(
         destination=trip.destination,
         days=trip.days,
         budget=trip.budget,
-        travel_style=trip.trip_style
+        travel_style=trip.trip_style,
     )
 
     itinerary = Itinerary(
-        trip_id=trip.id
+        trip_id=trip.id,
     )
 
     session.add(itinerary)
     session.flush()
 
-    for item in ai_result["days"]:
-
+    for item in ai_result.days:
         itinerary_day = ItineraryDay(
-            day=item["day"],
-            activities=json.dumps(
-                item["activities"]
-            ),
-            itinerary_id=itinerary.id
+            day=item.day,
+            activities=json.dumps(item.activities),
+            itinerary_id=itinerary.id,
         )
 
         session.add(itinerary_day)
 
     session.commit()
 
-    return {
-        "trip_id": trip.id,
-        "itinerary": ai_result["days"],
-        "message": "AI itinerary generated successfully"
-    }
+    return ItineraryResponse(
+        trip_id=trip.id,
+        itinerary=[
+            DayCreate(
+                day=day.day,
+                activities=day.activities,
+            )
+            for day in ai_result.days
+        ],
+        message="AI itinerary generated successfully",
+    )
