@@ -269,6 +269,79 @@ Itinerary Service
      v
 Database
 
+
+---
+
+# 4. Add the Part 6 Voice section
+
+Since we just finished this, I would definitely document it.
+
+Add:
+
+```markdown
+## Multimodal Voice Features
+
+The Vacation Planner was extended with voice capabilities.
+
+### Speech-to-Text
+
+Users can provide an audio file containing their travel request.
+
+```text
+Audio
+  |
+  v
+Faster-Whisper
+  |
+  v
+Text Transcript
+  |
+  v
+LangGraph Agent
+  |
+  v
+AI Itinerary
+
+
+---
+
+# 5. Add MCP as an **independent** section
+
+This is important because you specifically said **don't connect MCP to LangGraph**.
+
+Your README should make that distinction clear:
+
+```markdown
+## MCP — Model Context Protocol
+
+The Vacation Planner also includes an independent MCP integration for
+connecting the application to external travel-related tools.
+
+MCP is implemented as a separate client/server layer and does not replace
+the existing LangGraph tool system.
+
+### MCP Architecture
+
+```text
+                 Vacation Planner
+                       |
+                       v
+                   MCP Client
+                       |
+                       v
+                MCP Travel Server
+                  /          \
+                 /            \
+                v              v
+        Weather Tool       Maps Tool
+             |                 |
+             v                 v
+        Open-Meteo       OpenStreetMap/
+                          OSRM Services
+
+
+
+
 ## Setup Instructions
 
 1. Create and activate virtual environment (Windows example):
@@ -315,3 +388,83 @@ http://127.0.0.1:8000/docs
 - `GET /itineraries/{trip_id}` — Retrieve itinerary
 
 ---
+
+## Project Structure
+
+```text
+app/
+├── agents/
+│   └── travel_agent.py
+│
+├── core/
+│   └── security.py
+│
+├── dependencies/
+│   ├── auth.py
+│   └── db.py
+│
+├── graph/
+│   └── travel_graph.py
+│
+├── mcp/
+│   ├── travel_server.py
+│   └── client.py
+│
+├── models/
+│   ├── user.py
+│   ├── trip.py
+│   ├── itinerary.py
+│   └── itinerary_day.py
+│
+├── rag/
+│   └── rag_service.py
+│
+├── routes/
+│   ├── auth.py
+│   ├── user.py
+│   ├── trips.py
+│   ├── itinerary.py
+│   └── voice.py
+│
+├── schemas/
+│   ├── ai_response.py
+│   ├── itinerary.py
+│   ├── trip.py
+│   ├── voice.py
+│   └── tts.py
+│   └── auth.py
+│
+├── services/
+│   ├── ai_itinerary_service.py
+│   ├── itinerary_service.py
+│   ├── speech_service.py
+│   ├── tts_service.py
+│   └── llm.py
+│
+├── tools/
+│   ├── weather_tool.py
+│   ├── rag_tool.py
+│   └── mcp_tools.py
+│
+└── main.py
+
+knowledge/
+├── paris_guide.txt
+├── london_guide.txt
+└── dubai_guide.txt
+
+test/
+├── test_agent.py
+├── test_chunker.py
+├── test_embeddings.py
+├── test_graph.py
+├── test_mcp_client.py
+├── test_mcp_maps.py
+├── test_mcp_tools.py
+├── test_rag.py
+├── test_vector_store.py
+└── test_weather_tool.py
+
+alembic/
+requirements.txt
+README.md
