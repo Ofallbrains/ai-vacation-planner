@@ -1,0 +1,133 @@
+{
+  "dataset_name": "AI Vacation Planner Golden Dataset",
+  "version": "1.0",
+  "description": "Representative travel-planning test cases. Criteria are intended for deterministic checks and human/model-assisted quality review; they are not pre-computed model outputs.",
+  "cases": [
+    {
+      "id": "RW-3D-001",
+      "input": {
+        "destination": "Kigali, Rwanda",
+        "days": 3,
+        "budget": 300,
+        "travel_style": "Cultural"
+      },
+      "expected": {
+        "day_count": 3,
+        "sequential_days": true,
+        "non_empty_activities_each_day": true,
+        "destination_relevance_terms": [
+          "Kigali",
+          "Rwanda"
+        ],
+        "budget_respected": true,
+        "style_respected": true
+      }
+    },
+    {
+      "id": "KE-5D-002",
+      "input": {
+        "destination": "Nairobi, Kenya",
+        "days": 5,
+        "budget": 800,
+        "travel_style": "Adventure"
+      },
+      "expected": {
+        "day_count": 5,
+        "sequential_days": true,
+        "non_empty_activities_each_day": true,
+        "destination_relevance_terms": [
+          "Nairobi",
+          "Kenya"
+        ],
+        "budget_respected": true,
+        "style_respected": true
+      }
+    },
+    {
+      "id": "UG-4D-003",
+      "input": {
+        "destination": "Kampala, Uganda",
+        "days": 4,
+        "budget": 450,
+        "travel_style": "Budget"
+      },
+      "expected": {
+        "day_count": 4,
+        "sequential_days": true,
+        "non_empty_activities_each_day": true,
+        "destination_relevance_terms": [
+          "Kampala",
+          "Uganda"
+        ],
+        "budget_respected": true,
+        "style_respected": true
+      }
+    },
+    {
+      "id": "TZ-6D-004",
+      "input": {
+        "destination": "Arusha, Tanzania",
+        "days": 6,
+        "budget": 1800,
+        "travel_style": "Luxury"
+      },
+      "expected": {
+        "day_count": 6,
+        "sequential_days": true,
+        "non_empty_activities_each_day": true,
+        "destination_relevance_terms": [
+          "Arusha",
+          "Tanzania"
+        ],
+        "budget_respected": true,
+        "style_respected": true
+      }
+    },
+    {
+      "id": "RW-2D-005",
+      "input": {
+        "destination": "Musanze, Rwanda",
+        "days": 2,
+        "budget": 250,
+        "travel_style": "Nature"
+      },
+      "expected": {
+        "day_count": 2,
+        "sequential_days": true,
+        "non_empty_activities_each_day": true,
+        "destination_relevance_terms": [
+          "Musanze",
+          "Rwanda"
+        ],
+        "budget_respected": true,
+        "style_respected": true
+      }
+    },
+    {
+      "id": "INVALID-001",
+      "input": {
+        "destination": "",
+        "days": 3,
+        "budget": 200,
+        "travel_style": "Adventure"
+      },
+      "expected": {
+        "must_reject_input": true,
+        "reason": "Destination is required"
+      }
+    },
+    {
+      "id": "INVALID-002",
+      "input": {
+        "destination": "Kigali, Rwanda",
+        "days": 0,
+        "budget": 200,
+        "travel_style": "Budget"
+      },
+      "expected": {
+        "must_reject_input": true,
+        "reason": "Days must be at least 1"
+      }
+    }
+  ]
+}

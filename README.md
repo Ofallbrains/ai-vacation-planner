@@ -340,6 +340,87 @@ the existing LangGraph tool system.
                           OSRM Services
 
 
+---
+
+## Part 7: Evaluation, Security, Testing and Observability
+
+### 1. AI Response Evaluation
+
+The Vacation Planner includes an evaluation layer to assess
+AI-generated itineraries before they are accepted.
+
+The evaluator checks:
+
+- Whether the generated itinerary follows the expected structure.
+- Whether the number of generated days matches the user's request.
+- Whether day numbering is sequential.
+- Whether activities are provided for each day.
+- Whether the destination is represented in the response.
+
+If an itinerary fails evaluation, it is rejected rather than
+being returned as an accepted result.
+
+Evaluation is implemented in:
+
+- `app/evaluation/evaluator.py`
+- `app/services/ai_itinerary_service.py`
+
+### 2. Security and Guardrails
+
+The system implements input and output validation to improve
+the reliability and security of AI itinerary generation.
+
+**Input Guardrails**
+
+- Validate destination and trip information.
+- Restrict the requested number of days.
+- Validate budget values.
+- Detect suspicious prompt-injection patterns.
+
+**Output Guardrails**
+
+- Validate AI responses against the Pydantic schema.
+- Reject empty or incomplete itineraries.
+- Ensure generated activities are present.
+
+**RAG Security**
+
+- Retrieved documents are identified as untrusted external content.
+- Retrieved instructions are not treated as system instructions.
+- Travel knowledge is used as supporting context.
+
+**Tool Security**
+
+- The LangGraph agent uses an explicitly defined tool allowlist.
+
+Implementation:
+
+- `app/guardrails/input_guard.py`
+- `app/guardrails/output_guard.py`
+- `app/tools/`
+- `app/rag/`
+
+These safeguards reduce risks but do not guarantee protection
+against every possible prompt injection or malicious input.
+
+### 3. Testing Strategy
+
+The project uses Pytest for automated testing.
+
+Testing covers:
+
+- Authentication and API endpoints.
+- Trip and itinerary operations.
+- AI agent execution and graph workflows.
+- Input and output guardrails.
+- RAG retrieval and security.
+- Weather and MCP tools.
+- AI response evaluation.
+
+Run the complete test suite:
+
+```bash
+python -m pytest test/ -v
 
 
 ## Setup Instructions
