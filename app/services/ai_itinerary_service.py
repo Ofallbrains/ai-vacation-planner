@@ -9,6 +9,7 @@ from app.prompts.itinerary_prompt import (
 from app.tools.weather_tool import get_weather
 from app.services.state import AIState
 from app.services.retry import retry
+from app.rag.rag_service import retrieve_context
 
 
 client = Anthropic(api_key=settings.anthropic_api_key)
@@ -22,6 +23,22 @@ def generate_itinerary(
 ) -> AIItineraryResponse:
 
     weather = get_weather(destination)
+    
+    query = f"""
+    Create a travel itinerary for {destination}.
+    The trip is {days} days long.
+    The traveler's budget is {budget}.
+    The traveler's style is {travel_style}.
+
+    Find relevant attractions, neighborhoods,
+    local tips, food recommendations, and
+    useful travel information.
+    """
+
+    context = retrieve_context(
+        query=query,
+        n_results=3,
+    )
 
     state = AIState(
         destination=destination,
@@ -29,6 +46,7 @@ def generate_itinerary(
         budget=budget,
         travel_style=travel_style,
         weather=weather,
+        context=context,
     )
 
     prompt = build_itinerary_prompt(
@@ -37,6 +55,7 @@ def generate_itinerary(
         budget=state.budget,
         travel_style=state.travel_style,
         weather=state.weather,
+        context=state.context,
     )
 
     response = retry(
